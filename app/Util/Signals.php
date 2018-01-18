@@ -13,7 +13,7 @@ use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
- * Class Indicators
+ * Class Signals
  * @package Bowhead\Util
  *
  *          signal functions should return 1 for buy -1 for sell and 0 for no change
@@ -35,7 +35,7 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
  *          volatility indicators: ATR,NATR,TRANGE
  *          cycle indicators: HT_DCPERIOD,HT_DCPHASE,HT_PHASOR,HT_SINE,HT_TRENDMODE
  */
-class Indicators
+class Signals
 {
     use OHLC;
     /**
@@ -116,12 +116,7 @@ class Indicators
         # A downside breakout occurs when the previous close is 1 ATR above the price
         $downside_signal = ($prev_close - ($current + $atr));
 
-        if ($upside_signal > 0) {
-            return 1; // buy
-        } elseif ($downside_signal > 0){
-            return -1; // sell
-        }
-        return 0;
+        return [$upside_signal, $downside_signal];
     }
 
 
@@ -168,18 +163,10 @@ class Indicators
         # array $real [, integer $timePeriod [, float $nbDevUp [, float $nbDevDn [, integer $mAType ]]]]
         $bbands = trader_bbands($data['close'], $period, $devup, $devdn, 0);
         $upper  = $bbands[0];
-        #$middle = $bbands[1]; // we'll find a use for you, one day
+        $middle = $bbands[1]; // we'll find a use for you, one day
         $lower  = $bbands[2];
 
-        # If price is below the recent lower band
-        if ($current <= array_pop($lower)) {
-            return 1; // buy long
-        # If price is above the recent upper band
-        } elseif ($current >= array_pop($upper)) {
-            return -1; // sell (or short)
-        } else {
-            return 0; // notta
-        }
+        return [$lower, $upper, $middle];
     }
 
 
@@ -229,14 +216,7 @@ class Indicators
         #$macd = $macd_raw[count($macd_raw)-1] - $signal[count($signal)-1];
         $macd = (array_pop($macd_raw) - array_pop($signal));
         # Close position for the pair when the MACD signal is negative
-        if ($macd < 0) {
-            return -1;
-        # Enter the position for the pair when the MACD signal is positive
-        } elseif ($macd > 0) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return $macd;
     }
 
     /**
@@ -275,16 +255,8 @@ class Indicators
         if (!empty($macd)) {
             $macd = array_pop($macd[0]) - array_pop($macd[1]); #$macd_raw[count($macd_raw)-1] - $signal[count($signal)-1];
             # Close position for the pair when the MACD signal is negative
-            if ($macd < 0) {
-                return -1;
-                # Enter the position for the pair when the MACD signal is positive
-            } elseif ($macd > 0) {
-                return 1;
-            } else {
-                return 0;
-            }
+            return $macd;
         }
-        print_r($macd);
         return -2;
     }
 
@@ -317,15 +289,7 @@ class Indicators
         $rsi = trader_rsi ($data['close'], $period);
         $rsi = array_pop($rsi);
 
-        # RSI is above 70 and we own, sell
-        if ($rsi > $HIGH_RSI) {
-            return -1;
-        # RSI is below 30, buy
-        } elseif ($rsi < $LOW_RSI) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return $rsi;
     }
 
     /**
@@ -364,19 +328,7 @@ class Indicators
         $slowk = array_pop($slowk); #$slowk[count($slowk) - 1];
         $slowd = array_pop($slowd); #$slowd[count($slowd) - 1];
 
-        #echo "\n(SLOWK: $slowk SLOWD: $slowd)";
-
-        # If either the slowk or slowd are less than 10, the pair is
-        # 'oversold,' a long position is opened
-        if ($slowk < 10 || $slowd < 10) {
-            return 1;
-        # If either the slowk or slowd are larger than 90, the pair is
-        # 'overbought' and the position is closed.
-        }elseif ($slowk > 90 || $slowd > 90) {
-            return -1;
-        } else {
-            return 0;
-        }
+        return [$slowd, $slowk];
     }
 
     /**
@@ -408,17 +360,7 @@ class Indicators
         $fastk = array_pop($fastk); #$slowk[count($slowk) - 1];
         $fastd = array_pop($fastd); #$slowd[count($slowd) - 1];
 
-        # If either the slowk or slowd are less than 10, the pair is
-        # 'oversold,' a long position is opened
-        if ($fastk < 10 || $fastd < 10) {
-            return 1;
-            # If either the slowk or slowd are larger than 90, the pair is
-            # 'overbought' and the position is closed.
-        }elseif ($fastk > 90 || $fastd > 90) {
-            return -1;
-        } else {
-            return 0;
-        }
+        return [$fastd, $fastk];
     }
 
 
@@ -457,20 +399,13 @@ class Indicators
         $ao_sma_4 = trader_sma($data['mid'], 34);
 
         if ($return_raw) {
-            return ($ao_sma_1 - $ao_sma_2); // return the actual values of the oscillator
+            return [$ao_sma_1, $ao_sma_2]; // return the actual values of the oscillator
+
         } else {
             $ao_prior = (array_pop($ao_sma_3) - array_pop($ao_sma_4)); // last 'tick'
             $ao_now   = (array_pop($ao_sma_1) - array_pop($ao_sma_2)); // current 'tick'
 
-            /** Bullish cross */
-            if ($ao_prior <= 0 && $ao_now > 0) {
-                return 100;
-            /** Bearish cross */
-            } elseif($ao_prior >= 0 && $ao_now < 0){
-                return -100;
-            } else {
-                return 0;
-            }
+            return [$ao_prior, $ao_now];
         }
     }
 
@@ -493,13 +428,7 @@ class Indicators
         $mfi = trader_mfi($data['high'], $data['low'], $data['close'], $data['volume'], $period);
         $mfi = array_pop($mfi); #[count($mfi) - 1];
 
-        if ($mfi > 80) {
-            return -1; // overbought
-        } elseif ($mfi < 10) {
-            return 1;  // underbought
-        } else {
-            return 0;
-        }
+        return $mfi;
     }
 
     /**
@@ -526,17 +455,7 @@ class Indicators
         $prior_obv   = array_pop($_obv); #[count($_obv) - 2];
         $earlier_obv = array_pop($_obv); #[count($_obv) - 3];
 
-        /**
-         *   This forecasts a trend in the last three periods
-         *   TODO: this needs to be tested more, we might need to look closer for crypto currencies
-         */
-        if (($current_obv > $prior_obv) && ($prior_obv > $earlier_obv)) {
-            return 1; // upwards momentum
-        } elseif (($current_obv < $prior_obv) && ($prior_obv < $earlier_obv)) {
-            return -1; // downwards momentum
-        } else {
-            return 0;
-        }
+        return [$current_obv, $prior_obv, $earlier_obv];
     }
 
 
@@ -575,17 +494,7 @@ class Indicators
         $last_high = array_pop($data['high']); #[count($data['high'])-1];
         $last_low  = array_pop($data['low']); #[count($data['low'])-1];
 
-        /**
-         *  if the last three SAR points are above the candle (high) then it is a sell signal
-         *  if the last three SAE points are below the candle (low) then is a buy signal
-         */
-        if (($current_sar > $last_high) && ($prior_sar > $last_high) && ($earlier_sar > $last_high)) {
-            return -1; //sell
-        } elseif (($current_sar < $last_low) && ($prior_sar < $last_low) && ($earlier_sar < $last_low)) {
-            return 1; // buy
-        } else {
-            return 0; // hold
-        }
+        return [$current_sar, $prior_sar, $earlier_sar, $last_high, $last_low];
     }
 
     /**
@@ -662,16 +571,8 @@ class Indicators
         echo "\n$line";
         //*/
 
-        if (($prior_above && $prior_red_candle) && ($below && $green_candle)) {
-            /** SAR is below a NEW green candle. */
-            return 1; // buy signal
-        } elseif (($prior_below && $prior_green_candle) && ($above && $red_candle)) {
-            /** SAR is above a NEW red candle */
-            return -1; // sell signal
-        } else {
-            /** do nothing  */
-            return 0; // twiddle thumbs
-        }
+
+        return [$prior_above, $prev_red_candle, $below, $green_candle, $prior_below, $prior_green_candle, $above, $red_candle];
     }
 
 
@@ -694,13 +595,7 @@ class Indicators
         $cci = trader_cci($data['high'], $data['low'], $data['close'], $period);
         $cci = array_pop($cci); #[count($cci) - 1];
 
-        if ($cci > 100) {
-            return -1; // overbought
-        } elseif ($cci < -100) {
-            return 1;  // underbought
-        } else {
-            return 0;
-        }
+        return $cci;
     }
 
     /**
@@ -721,13 +616,7 @@ class Indicators
         $cmo = trader_cmo($data['close'], $period);
         $cmo = array_pop($cmo); #[count($cmo) - 1];
 
-        if ($cmo > 50) {
-            return -1; // overbought
-        } elseif ($cmo < -50) {
-            return 1;  // underbought
-        } else {
-            return 0;
-        }
+        return $cmo;
     }
 
     /**
@@ -748,13 +637,7 @@ class Indicators
         $aroonosc = trader_aroonosc($data['high'], $data['low'], $period);
         $aroonosc = array_pop($aroonosc); #[count($aroonosc) - 1];
 
-        if ($aroonosc < -50) {
-            return -1; // overbought
-        } elseif ($aroonosc > 50) {
-            return 1;  // underbought
-        } else {
-            return 0;
-        }
+        return $aroonosc;
     }
 
     /**
@@ -787,13 +670,7 @@ class Indicators
         }
         $adx = array_pop($adx); #[count($adx) - 1];
 
-        if ($adx > 50) {
-            return -1; // overbought
-        } elseif ($adx < 20) {
-            return 1;  // underbought
-        } else {
-            return 0;
-        }
+        return $adx;
     }
 
     /**
@@ -807,7 +684,7 @@ class Indicators
      * @param int $period
      * @param bool $trend
      * @param int $trend_period
-     * @return int
+     * @return int|mixed
      */
     public function stochrsi($pair='BTC/USD', $data=null, $period=14, $trend=false, $trend_period=5)
     {
@@ -830,24 +707,12 @@ class Indicators
             foreach ($parts as $part) {
                 $trending += ($part >= 0.5 ? 1 : -1);
             }
-            if ($trending == 5){
-                return 1;
-            }
-            if ($trending == -5){
-                return -1;
-            }
-            return 0;
+            return $trending;
         /**
          *  or, just see if we have overbought/oversold
          */
         } else {
-            if ($stochrsi < 0.2) {
-                return 1; // oversold
-            } elseif ($stochrsi > 0.8) {
-                return -1; // overbought
-            } else {
-                return 0;
-            }
+            return $stochrsi;
         }
     }
 
@@ -859,7 +724,7 @@ class Indicators
      * @param string $pair
      * @param null $data
      * @param int $period
-     * @return int
+     * @return mixed
      */
     public function roc($pair='BTC/USD', $data=null, $period=14)
     {
@@ -869,13 +734,7 @@ class Indicators
         }
         $roc = trader_roc($data['close'], $period);
         $roc = array_pop($roc);
-        if ($roc < -30) {
-            return 1; // oversold
-        } elseif ($roc > 30) {
-            return -1; // overbought
-        } else {
-            return 0;
-        }
+        return $roc;
     }
 
     /**
@@ -886,7 +745,7 @@ class Indicators
      * @param string $pair
      * @param null $data
      * @param int $period
-     * @return int
+     * @return mixed
      */
     public function willr($pair='BTC/USD', $data=null, $period=14)
     {
@@ -895,13 +754,7 @@ class Indicators
         }
         $willr = trader_willr($data['high'], $data['low'], $data['close'], $period);
         $willr = array_pop($willr);
-        if ($willr <= -80) {
-            return 1; // oversold
-        } elseif ($willr >= -20) {
-            return -1; // overbought
-        } else {
-            return 0;
-        }
+        return $willr;
     }
 
     /**
@@ -923,7 +776,7 @@ class Indicators
      * @param int $period1
      * @param int $period2
      * @param int $period3
-     * @return int
+     * @return int|mixed
      */
     public function ultosc($pair='BTC/USD', $data=null, $period1=7, $period2=14, $period3=28)
     {
@@ -937,13 +790,7 @@ class Indicators
         	return 0;
 		}
         $ultosc = array_pop($ultosc);
-        if ($ultosc <= 30) {
-            return 1; // oversold
-        } elseif ($ultosc >= 70) {
-            return -1; // overbought
-        } else {
-            return 0;
-        }
+        return $ultosc;
     }
 
     /**
@@ -958,7 +805,7 @@ class Indicators
      * @param string $pair
      * @param null $data
      * @param int $period
-     * @return int
+     * @return mixed
      */
     public function hli($pair='BTC/USD', $data=null, $period=28)
     {
@@ -989,13 +836,7 @@ class Indicators
         $hli = trader_sma($rhp, 10);
         $hli = array_pop($hli);
 
-        if ($hli > 70) {
-            return 1; // bullish
-        } elseif ($hli < 30) {
-            return -1; // bearish
-        } else {
-            return 0;
-        }
+        return $hli;
     }
 
     /**
@@ -1007,7 +848,7 @@ class Indicators
      * Bear Power is derived by subtracting the 13-day EMA from the day’s low.
      * @param string $pair
      * @param null $data
-     * @return int
+     * @return array|int
      */
     public function er($pair='BTC/USD', $data=null)
     {
@@ -1035,16 +876,7 @@ class Indicators
         $ema_current  = array_pop($ema);
         $bull_current = $ema_current - array_pop($data['high']);
         $bear_current = $ema_current - array_pop($data['low']);
-
-        if ($bull_current > 0 && $highs_current > $macd_current) {
-            return 1;
-        } elseif($bear_current < 0 && $lows_current < $macd_current) {
-            return -1;
-        } else {
-            return 0;
-        }
-
-
+        return [$bull_current, $highs, $macd_current, $bear_current, $lows_current];
     }
 
     /**
@@ -1058,7 +890,7 @@ class Indicators
      * @param string $pair
      * @param null $data
      * @param int $period
-     * @return int
+     * @return float
      */
     public function mmi($pair='BTC/USD', $data=null, $period=200)
     {
@@ -1077,13 +909,7 @@ class Indicators
             }
         }
         $mmi = 100.*($nl+$nh)/($len-1);
-        if ($mmi < 75) {
-            return 1;
-        }
-        if ($mmi > 75) {
-            return -1;
-        }
-        return 0;
+        return $mmi;
     }
 
 
@@ -1103,7 +929,7 @@ class Indicators
      * @param string $pair
      * @param null $data
      * @param bool $trend
-     * @return int
+     * @return array|int
      */
     public function hts($pair='BTC/USD', $data=null, $trend=false)
     {
@@ -1130,13 +956,7 @@ class Indicators
         }
 
         /** WE ARE NOT ASKING FOR THE TREND, RETURN A SIGNAL */
-        if ($leadsine > $dcsine && $p_leadsine <= $p_dcsine){
-            return 1; // buy
-        }
-        if ($leadsine < $dcsine && $p_leadsine >= $p_dcsine){
-            return -1; // sell
-        }
-        return 0;
+        return [$leadsine, $dcsine, $p_leadsine, $p_dcsine];
     }
 
     /**
@@ -1151,7 +971,7 @@ class Indicators
      *      (WMA(4)-trendline)/trendline >= 0.15 then trend = 1
      * @param string $pair
      * @param null $data
-     * @return int
+     * @return array
      */
     public function htl($pair='BTC/USD', $data=null)
     {
@@ -1171,13 +991,7 @@ class Indicators
 
             $declared = (($a_wma4[$a]-$a_htl[$a])/$a_htl[$a]);
         }
-        if ($uptrend || $declared >= 0.15) {
-            return 1;
-        }
-        if ($downtrend || $declared <= 0.15) {
-            return -1;
-        }
-        return 0;
+        return [$uptrend, $declared, $downtrend];
     }
 
     /**

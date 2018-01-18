@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "1ff9e366e0fa51999a0b946694c51103",
+    "content-hash": "5cdc80a924b4f3c8fca1026d35d697a8",
     "packages": [
         {
             "name": "andreas-glaser/php-helpers",
@@ -176,16 +176,16 @@
         },
         {
             "name": "ccxt/ccxt",
-            "version": "1.10.709",
+            "version": "1.10.729",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ccxt/ccxt.git",
-                "reference": "a31be297528b479f841f3294c573c680ce4707b8"
+                "reference": "189b2caab0f8ff238f8ab634f0863e53edbad5fd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ccxt/ccxt/zipball/a31be297528b479f841f3294c573c680ce4707b8",
-                "reference": "a31be297528b479f841f3294c573c680ce4707b8",
+                "url": "https://api.github.com/repos/ccxt/ccxt/zipball/189b2caab0f8ff238f8ab634f0863e53edbad5fd",
+                "reference": "189b2caab0f8ff238f8ab634f0863e53edbad5fd",
                 "shasum": ""
             },
             "require": {
@@ -422,7 +422,7 @@
                 "zec",
                 "zerocoin"
             ],
-            "time": "2018-01-14T19:15:00+00:00"
+            "time": "2018-01-15T22:47:48+00:00"
         },
         {
             "name": "dingo/api",

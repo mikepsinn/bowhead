@@ -928,7 +928,7 @@ class Signals
         $ema_current  = array_pop($ema);
         $bull_current = $ema_current - array_pop($data['high']);
         $bear_current = $ema_current - array_pop($data['low']);
-        return [$bull_current, $highs, $macd_current, $bear_current, $lows_current];
+        return [$bull_current, $macd_current, $bear_current, $lows_current];
     }
 
     /**
@@ -1153,14 +1153,19 @@ class Signals
                             $key = $ma;
                         }
                     }
-                    $flags['ma'][$key] = $this->macdext($pair, $data, 12, $ma, 26, $ma2, 9, $ma3);
+                    //$flags['ma'][$key] = $this->macdext($pair, $data, 12, $ma, 26, $ma2, 9, $ma3);
                 }
             }
         }
         $flattenedArray = [];
         foreach ($flags as $element){
             if(is_array($element)){
-                array_merge($flattenedArray, $element);
+                foreach ($element as $key => $value){
+                    if(!$value){
+                        $element[$key] = 0;
+                    }
+                }
+                $flattenedArray = array_merge($flattenedArray, $element);
             } else {
                 $flattenedArray[] = $element;
             }

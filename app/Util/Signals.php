@@ -9,6 +9,7 @@ namespace Bowhead\Util;
 
 use Bowhead\Traits\OHLC;
 use Bowhead\Util\Util;
+use Quantimodo\Api\Model\Helpers\ArrayHelper;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
@@ -166,7 +167,7 @@ class Signals
         $middle = $bbands[1]; // we'll find a use for you, one day
         $lower  = $bbands[2];
 
-        return [$lower, $upper, $middle];
+        return [array_pop($lower), array_pop($upper), array_pop($middle)];
     }
 
 
@@ -673,6 +674,20 @@ class Signals
         return $adx;
     }
 
+    private function transposeArray($data){
+        $transposedArray = $transposedElement = [];
+        for($i = 0; $i < count($data['date']); $i++){
+            foreach ($data as $type => $typeArray){
+                $transposedElement[$type] = $typeArray[$i];
+                unset($data[$type][$i]);
+            }
+            $transposedArray[$transposedElement['date']] = $transposedElement;
+        }
+        $transposedArray = ArrayHelper::sortByKeysAscending($transposedArray);
+        $transposedArray = array_values($transposedArray);
+        return $transposedArray;
+    }
+
     /**
      *  Stochastic - relative strength index
      *  above .80 is considered overbought
@@ -688,32 +703,69 @@ class Signals
      */
     public function stochrsi($pair='BTC/USD', $data=null, $period=14, $trend=false, $trend_period=5)
     {
-        // trader_stochrsi ( array $real [, integer $timePeriod [, integer $fastK_Period [, integer $fastD_Period [, integer $fastD_MAType ]]]] )
-        if (empty($data)) {
-            $data = $this->getRecentData($pair);
-        }
-        $stochrsi_trend = $stochrsi = trader_stochrsi($data['close'], $period);
-        $stochrsi = array_pop($stochrsi);
+        $data = $this->transposeArray($data);
+        $change_array = array();
+        $rsi_array = array();
+        //loop data
+        foreach($data as $key => $row){
+            //need 2 points to get change
+            if($key >= 1){
+                $change = $data[$key]['close'] - $data[$key - 1]['close'];
+                //add to front
+                array_unshift($change_array, $change);
+                //pop back if too long
+                if(count($change_array) > $period)
+                    array_pop($change_array);
+            }
+            //have enough data to calc rsi
+            if($key > $period){
+                //reduce change array getting sum loss and sum gains
+                $res = array_reduce($change_array, function($result, $item) {
+                    if($item >= 0)
+                        $result['sum_gain'] += $item;
 
-        /**
-         *  Lets determine if there is a trend over period 5
-         */
-        if ($trend) {
-            $trending = 0;
-            $parts = [];
-            for($a=0; $a<$trend_period; $a++) {
-                $parts[] = array_pop($stochrsi_trend);
+                    if($item < 0)
+                        $result['sum_loss'] += abs($item);
+                    return $result;
+                }, array('sum_gain' => 0, 'sum_loss' => 0));
+                $avg_gain = $res['sum_gain'] / $period;
+                $avg_loss = $res['sum_loss'] / $period;
+                //check divide by zero
+                if($avg_loss == 0){
+                    $rsi = 100;
+                } else {
+                    //calc and normalize
+                    $rs = $avg_gain / $avg_loss;
+                    $rsi = 100 - (100 / ( 1 + $rs));
+                }
+                //add to front
+                array_unshift($rsi_array, $rsi);
+                //pop back if too long
+                if(count($rsi_array) > $rsi)
+                    array_pop($rsi_array);
             }
-            foreach ($parts as $part) {
-                $trending += ($part >= 0.5 ? 1 : -1);
+            //have enough data to calc stochrsi
+            if($key >= $period * 2){
+                //max of highs
+                $init = $rsi_array[0];
+                $h = array_reduce($rsi_array, function($v, $w) {
+                    $v = max($w, $v);
+                    return $v;
+                }, $init);
+                //low of lows
+                $init = $rsi_array[0];
+                $l = array_reduce($rsi_array, function($v, $w) {
+                    $v = min($w, $v);
+                    return $v;
+                }, $init);
+                //calc stoch rsi
+                $stochrsi = ($rsi_array[0] - $l) / ($h - $l);
+                //save
+                $data[$key]['stochrsi'] = $stochrsi;
+
             }
-            return $trending;
-        /**
-         *  or, just see if we have overbought/oversold
-         */
-        } else {
-            return $stochrsi;
         }
+        return $data[$key]['stochrsi'];
     }
 
     /**
@@ -1105,8 +1157,15 @@ class Signals
                 }
             }
         }
-
-        return $flags;
+        $flattenedArray = [];
+        foreach ($flags as $element){
+            if(is_array($element)){
+                array_merge($flattenedArray, $element);
+            } else {
+                $flattenedArray[] = $element;
+            }
+        }
+        return $flattenedArray;
     }
 
 

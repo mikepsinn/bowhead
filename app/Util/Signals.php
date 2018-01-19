@@ -9,6 +9,7 @@ namespace Bowhead\Util;
 use Bowhead\Traits\OHLC;
 use Bowhead\Util\Util;
 use Quantimodo\Api\Model\Helpers\ArrayHelper;
+use Quantimodo\Api\Model\QMLog;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 /**
@@ -365,7 +366,7 @@ class Signals
         } else {
             $ao_prior = (array_pop($ao_sma_3) - array_pop($ao_sma_4)); // last 'tick'
             $ao_now   = (array_pop($ao_sma_1) - array_pop($ao_sma_2)); // current 'tick'
-            return ['$ao_prior' => $ao_prior, '$ao_now' => $ao_now];
+            return ['ao_prior' => $ao_prior, 'ao_now' => $ao_now];
         }
     }
     /**
@@ -408,7 +409,7 @@ class Signals
         $current_obv = array_pop($_obv); #[count($_obv) - 1];
         $prior_obv   = array_pop($_obv); #[count($_obv) - 2];
         $earlier_obv = array_pop($_obv); #[count($_obv) - 3];
-        return ['$current_obv' => $current_obv, '$prior_obv' => $prior_obv, '$earlier_obv' => $earlier_obv];
+        return ['current_obv' => $current_obv, 'prior_obv' => $prior_obv, 'earlier_obv' => $earlier_obv];
     }
     /**
      * @param string $pair
@@ -442,7 +443,7 @@ class Signals
         $earlier_sar = array_pop($_sar); #[count($_sar) - 3];
         $last_high = array_pop($data['high']); #[count($data['high'])-1];
         $last_low  = array_pop($data['low']); #[count($data['low'])-1];
-        return ['$current_sar' => $current_sar, '$prior_sar' => $prior_sar, '$earlier_sar' => $earlier_sar, '$last_high' => $last_high, '$last_low' => $last_low];
+        return ['current_sar' => $current_sar, 'prior_sar' => $prior_sar, 'earlier_sar' => $earlier_sar, 'last_high' => $last_high, 'last_low' => $last_low];
     }
     /**
      * @param string $pair
@@ -509,8 +510,8 @@ class Signals
         $line .= ")";
         echo "\n$line";
         //*/
-        return ['$prior_above' => $prior_above, '$prev_red_candle' => $prev_red_candle, '$below' => $below, '$green_candle' => $green_candle,
-            '$prior_below' => $prior_below, '$prior_green_candle' => $prior_green_candle, '$above' => $above, '$red_candle' => $red_candle];
+        return ['prior_above' => $prior_above, 'prev_red_candle' => $prev_red_candle, 'below' => $below, 'green_candle' => $green_candle,
+            'prior_below' => $prior_below, 'prior_green_candle' => $prior_green_candle, 'above' => $above, 'red_candle' => $red_candle];
     }
     /**
      * @param string $pair
@@ -685,6 +686,10 @@ class Signals
                 $data[$key]['stochrsi'] = $stochrsi;
             }
         }
+        if(!isset($data[$key]['stochrsi'])){
+            QMLog::error("$key is not enough data to calculate stochrsi at period $period!");
+            return null;
+        }
         return $data[$key]['stochrsi'];
     }
     /**
@@ -838,7 +843,7 @@ class Signals
         $ema_current  = array_pop($ema);
         $bull_current = $ema_current - array_pop($data['high']);
         $bear_current = $ema_current - array_pop($data['low']);
-        return ['$bull_current' => $bull_current, '$macd_current' => $macd_current, '$bear_current' => $bear_current, '$lows_current' => $lows_current];
+        return ['bull_current' => $bull_current, 'macd_current' => $macd_current, 'bear_current' => $bear_current, 'lows_current' => $lows_current];
     }
     /**
      *  NO TALib specific funciton
@@ -913,7 +918,7 @@ class Signals
             return 0;
         }
         /** WE ARE NOT ASKING FOR THE TREND, RETURN A SIGNAL */
-        return ['$leadsine' => $leadsine, '$dcsine' => $dcsine, '$p_leadsine' => $p_leadsine, '$p_dcsine' => $p_dcsine];
+        return ['leadsine' => $leadsine, 'dcsine' => $dcsine, 'p_leadsine' => $p_leadsine, 'p_dcsine' => $p_dcsine];
     }
     /**
      *      Hilbert Transform - Instantaneous Trendline
@@ -945,7 +950,7 @@ class Signals
             $downtrend += ($a_wma4[$a] < $a_htl[$a] ? 1 : 0);
             $declared = (($a_wma4[$a]-$a_htl[$a])/$a_htl[$a]);
         }
-        return ['$uptrend' => $uptrend, '$declared' => $declared, '$downtrend' => $downtrend];
+        return ['uptrend' => $uptrend, 'declared' => $declared, 'downtrend' => $downtrend];
     }
     /**
      *

@@ -6,13 +6,11 @@
  * Time: 6:26 PM
  */
 namespace Bowhead\Util;
-
 use Bowhead\Traits\OHLC;
 use Bowhead\Util\Util;
 use Quantimodo\Api\Model\Helpers\ArrayHelper;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
-
 /**
  * Class Signals
  * @package Bowhead\Util
@@ -44,14 +42,12 @@ class Signals
      *      array with the available types of moving averages
      */
     public $mas = array('sma','ema','wma','dema','tema','trima','kama','mama','t3');
-
     /**
      * @var array
      *      array with the available types of buy/sell signals
      *      'aroonosc','cmo','cci','mfi' = a good group with volume
      */
     public $available_signals = array('adx','aroonosc','cmo','sar','cci','mfi','obv','stoch','rsi','macd','bollingerBands','atr','er','hli','ultosc','willr','roc','stochrsi');
-
     /**
      * @param $ma
      *
@@ -78,7 +74,6 @@ class Signals
         );
         return $types[$ma];
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -107,20 +102,14 @@ class Signals
         $data2 = $data;
         $current = array_pop($data2['close']); #[count($data['close']) - 1];    // we assume this is current
         $prev_close = array_pop($data2['close']); #[count($data['close']) - 2]; // prior close
-
         $atr = trader_atr ($data['high'], $data['low'], $data['close'], $period);
         $atr = array_pop($atr) ; #[count($atr)-1]; // pick off the last
-
         # An upside breakout occurs when the price goes 1 ATR above the previous close
         $upside_signal = ($current - ($prev_close + $atr));
-
         # A downside breakout occurs when the previous close is 1 ATR above the price
         $downside_signal = ($prev_close - ($current + $atr));
-
-        return [$upside_signal, $downside_signal];
+        return ['$upside_signal' => $upside_signal, '$downside_signal' => $downside_signal];
     }
-
-
     /**
      * @param string $pair
      * @param null $data
@@ -151,7 +140,6 @@ class Signals
      * When the Bollinger bands “squeeze”, it means that the market is very quiet, and a breakout is eminent.
      * Once a breakout occurs, we enter a trade on whatever side the price makes its breakout.
      */
-
     public function bollingerBands($pair='BTC/USD', $data=null, $period=10, $devup=2, $devdn=2)
     {
         if (empty($data)) {
@@ -160,17 +148,13 @@ class Signals
         $data2 = $data;
         #$prev_close = array_pop($data2['close']); #[count($data['close']) - 2]; // prior close
         $current = array_pop($data2['close']); #[count($data['close']) - 1];    // we assume this is current
-
         # array $real [, integer $timePeriod [, float $nbDevUp [, float $nbDevDn [, integer $mAType ]]]]
         $bbands = trader_bbands($data['close'], $period, $devup, $devdn, 0);
         $upper  = $bbands[0];
         $middle = $bbands[1]; // we'll find a use for you, one day
         $lower  = $bbands[2];
-
-        return [array_pop($lower), array_pop($upper), array_pop($middle)];
+        return ['bb_lower' => array_pop($lower), 'bb_upper' => array_pop($upper), 'bb_middle' => array_pop($middle)];
     }
-
-
     /**
      * @param string $pair
      * @param null $data
@@ -198,28 +182,23 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         # Create the MACD signal and pass in the three parameters: fast period, slow period, and the signal.
         # we will want to tweak these periods later for now these are fine.
         #  data, fast period, slow period, signal period (2-100000)
-
         # array $real [, integer $fastPeriod [, integer $slowPeriod [, integer $signalPeriod ]]]
         $macd = trader_macd($data['close'], $period1, $period2, $period3);
         $macd_raw = $macd[0];
         $signal   = $macd[1];
         $hist     = $macd[2];
-
         //If not enough Elements for the Function to complete
         if(!$macd || !$macd_raw){
         	return 0;
 		}
-
         #$macd = $macd_raw[count($macd_raw)-1] - $signal[count($signal)-1];
         $macd = (array_pop($macd_raw) - array_pop($signal));
         # Close position for the pair when the MACD signal is negative
         return $macd;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -242,11 +221,9 @@ class Signals
         $fastMAType   = $this->ma_type($fastMAType);
         $slowMAType   = $this->ma_type($slowMAType);
         $signalMAType = $this->ma_type($signalMAType);
-
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         # Create the MACD signal and pass in the three parameters: fast period, slow period, and the signal.
         # we will want to tweak these periods later for now these are fine.
         $macd = trader_macdext($data['close'], $fastPeriod, $fastMAType, $slowPeriod, $slowMAType, $signalPeriod, $signalMAType);
@@ -260,7 +237,6 @@ class Signals
         }
         return -2;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -279,20 +255,16 @@ class Signals
     {
         $LOW_RSI  = 30;
         $HIGH_RSI = 70;
-
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
         #$data2 = $data;
         #$current = array_pop($data2['close']); #$data['close'][count($data['close']) - 1];    // we assume this is current
         #$prev_close = array_pop($data2['close']); #$data['close'][count($data['close']) - 2]; // prior close
-
         $rsi = trader_rsi ($data['close'], $period);
         $rsi = array_pop($rsi);
-
         return $rsi;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -320,18 +292,14 @@ class Signals
         }
         #$prev_close = $data['close'][count($data['close']) - 2]; // prior close
         #$current = $data['close'][count($data['close']) - 1];    // we assume this is current
-
         #high,low,close, fastk_period, slowk_period, slowk_matype, slowd_period, slowd_matype
         $stoch = trader_stoch($data['high'], $data['low'], $data['close'], 13, 3, $matype1, 3, $matype2);
         $slowk = $stoch[0];
         $slowd = $stoch[1];
-
         $slowk = array_pop($slowk); #$slowk[count($slowk) - 1];
         $slowd = array_pop($slowd); #$slowd[count($slowd) - 1];
-
-        return [$slowd, $slowk];
+        return ['$slowd' => $slowd, '$slowk' => $slowk];
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -352,19 +320,14 @@ class Signals
         }
         #$prev_close = $data['close'][count($data['close']) - 2]; // prior close
         #$current = $data['close'][count($data['close']) - 1];    // we assume this is current
-
         #high,low,close, fastk_period, slowk_period, slowk_matype, slowd_period, slowd_matype
         $stoch = trader_stochf($data['high'], $data['low'], $data['close'], 13, 3, $matype1);
         $fastk = $stoch[0];
         $fastd = $stoch[1];
-
         $fastk = array_pop($fastk); #$slowk[count($slowk) - 1];
         $fastd = array_pop($fastd); #$slowd[count($slowd) - 1];
-
-        return [$fastd, $fastk];
+        return ['stoch_f_d' => $fastd, 'stoch_f_k' => $fastk];
     }
-
-
     /**
      * NO specific TALib function
      *
@@ -394,23 +357,17 @@ class Signals
         }
         $ao_sma_1 = trader_sma($data['mid'], 5);
         $ao_sma_2 = trader_sma($data['mid'], 34);
-
         array_pop($data['mid']); // take most recent off.
         $ao_sma_3 = trader_sma($data['mid'], 5);
         $ao_sma_4 = trader_sma($data['mid'], 34);
-
         if ($return_raw) {
             return [$ao_sma_1, $ao_sma_2]; // return the actual values of the oscillator
-
         } else {
             $ao_prior = (array_pop($ao_sma_3) - array_pop($ao_sma_4)); // last 'tick'
             $ao_now   = (array_pop($ao_sma_1) - array_pop($ao_sma_2)); // current 'tick'
-
-            return [$ao_prior, $ao_now];
+            return ['$ao_prior' => $ao_prior, '$ao_now' => $ao_now];
         }
     }
-
-
     /**
      * @param string $pair
      * @param null   $data
@@ -425,13 +382,10 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         $mfi = trader_mfi($data['high'], $data['low'], $data['close'], $data['volume'], $period);
         $mfi = array_pop($mfi); #[count($mfi) - 1];
-
         return $mfi;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -450,16 +404,12 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair, $period, true, 12); // getting day 'noon' data for last two weeks
         }
-
         $_obv = trader_obv($data['close'], $data['volume']);
         $current_obv = array_pop($_obv); #[count($_obv) - 1];
         $prior_obv   = array_pop($_obv); #[count($_obv) - 2];
         $earlier_obv = array_pop($_obv); #[count($_obv) - 3];
-
-        return [$current_obv, $prior_obv, $earlier_obv];
+        return ['$current_obv' => $current_obv, '$prior_obv' => $prior_obv, '$earlier_obv' => $earlier_obv];
     }
-
-
     /**
      * @param string $pair
      * @param null $data
@@ -484,20 +434,16 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair, $period, true, 12); // getting day 'noon' data for last two weeks
         }
-
         // SEE TODO: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:parabolic_sar
         # array $high , array $low [, float $acceleration [, float $maximum ]]
         $_sar = trader_sar($data['high'], $data['low'], $acceleration, $maximum);
         $current_sar = array_pop($_sar); #[count($_sar) - 1];
         $prior_sar   = array_pop($_sar); #[count($_sar) - 2];
         $earlier_sar = array_pop($_sar); #[count($_sar) - 3];
-
         $last_high = array_pop($data['high']); #[count($data['high'])-1];
         $last_low  = array_pop($data['low']); #[count($data['low'])-1];
-
-        return [$current_sar, $prior_sar, $earlier_sar, $last_high, $last_low];
+        return ['$current_sar' => $current_sar, '$prior_sar' => $prior_sar, '$earlier_sar' => $earlier_sar, '$last_high' => $last_high, '$last_low' => $last_low];
     }
-
     /**
      * @param string $pair
      * @param null $data
@@ -522,40 +468,32 @@ class Signals
         $current_sar = (float) array_pop($_sar);
         $prior_sar   = (float) array_pop($_sar);
         $prev_sar    = (float) array_pop($_sar);
-
         $last_high  = (float) array_pop($data['high']);
         $last_low   = (float) array_pop($data['low']);
         $last_open  = (float) array_pop($data['open']);
         $last_close = (float) array_pop($data['close']);
-
         $prior_high  = (float) array_pop($data['high']);
         $prior_low   = (float) array_pop($data['low']);
         $prior_open  = (float) array_pop($data['open']);
         $prior_close = (float) array_pop($data['close']);
-
         #$prev_high  = (float) array_pop($data['high']);
         #$prev_low   = (float) array_pop($data['low']);
         $prev_open  = (float) array_pop($data['open']);
         $prev_close = (float) array_pop($data['close']);
-
         $below        = $this->compareFloatNumbers($current_sar, $last_low, '<');
         $above        = $this->compareFloatNumbers($current_sar, $last_high,'>');
         $red_candle   = $this->compareFloatNumbers($last_open, $last_close, '<');
         $green_candle = $this->compareFloatNumbers($last_open, $last_close, '>');
-
         $prior_below        = $this->compareFloatNumbers($prior_sar, $prior_low, '<');
         $prior_above        = $this->compareFloatNumbers($prior_sar, $prior_high, '>');
         $prior_red_candle   = $this->compareFloatNumbers($prior_open, $prior_close, '<');
         $prior_green_candle = $this->compareFloatNumbers($prior_open, $prior_close, '>');
-
         #$prev_below        = $this->compareFloatNumbers($prev_sar, $prev_low, '<');
         #$prev_above        = $this->compareFloatNumbers($prev_sar, $prev_high, '>');
         $prev_red_candle   = $this->compareFloatNumbers($prev_open, $prev_close, '<');
         $prev_green_candle = $this->compareFloatNumbers($prev_open, $prev_close, '>');
-
         $prior_red_candle   = ($prev_red_candle || $prior_red_candle ? true : false);
         $prior_green_candle = ($prev_green_candle || $prior_green_candle ? true : false);
-
         // TODO this is useful for testing
         /**
         $line = "";
@@ -571,12 +509,9 @@ class Signals
         $line .= ")";
         echo "\n$line";
         //*/
-
-
-        return [$prior_above, $prev_red_candle, $below, $green_candle, $prior_below, $prior_green_candle, $above, $red_candle];
+        return ['$prior_above' => $prior_above, '$prev_red_candle' => $prev_red_candle, '$below' => $below, '$green_candle' => $green_candle,
+            '$prior_below' => $prior_below, '$prior_green_candle' => $prior_green_candle, '$above' => $above, '$red_candle' => $red_candle];
     }
-
-
     /**
      * @param string $pair
      * @param null   $data
@@ -591,14 +526,11 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         # array $high , array $low , array $close [, integer $timePeriod ]
         $cci = trader_cci($data['high'], $data['low'], $data['close'], $period);
         $cci = array_pop($cci); #[count($cci) - 1];
-
         return $cci;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -613,13 +545,10 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         $cmo = trader_cmo($data['close'], $period);
         $cmo = array_pop($cmo); #[count($cmo) - 1];
-
         return $cmo;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -634,13 +563,10 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         $aroonosc = trader_aroonosc($data['high'], $data['low'], $period);
         $aroonosc = array_pop($aroonosc); #[count($aroonosc) - 1];
-
         return $aroonosc;
     }
-
     /**
      * @param string $pair
      * @param null   $data
@@ -664,16 +590,13 @@ class Signals
         if (empty($data)) {
             $data = $this->getRecentData($pair);
         }
-
         $adx = trader_adx($data['high'], $data['low'], $data['close'], $period);
         if (empty($adx)) {
             return -9;
         }
         $adx = array_pop($adx); #[count($adx) - 1];
-
         return $adx;
     }
-
     private function transposeArray($data){
         $transposedArray = $transposedElement = [];
         for($i = 0; $i < count($data['date']); $i++){
@@ -687,7 +610,6 @@ class Signals
         $transposedArray = array_values($transposedArray);
         return $transposedArray;
     }
-
     /**
      *  Stochastic - relative strength index
      *  above .80 is considered overbought
@@ -723,7 +645,6 @@ class Signals
                 $res = array_reduce($change_array, function($result, $item) {
                     if($item >= 0)
                         $result['sum_gain'] += $item;
-
                     if($item < 0)
                         $result['sum_loss'] += abs($item);
                     return $result;
@@ -762,12 +683,10 @@ class Signals
                 $stochrsi = ($rsi_array[0] - $l) / ($h - $l);
                 //save
                 $data[$key]['stochrsi'] = $stochrsi;
-
             }
         }
         return $data[$key]['stochrsi'];
     }
-
     /**
      * Price Rate of Change
      * ROC = [(Close - Close n periods ago) / (Close n periods ago)] * 100
@@ -788,7 +707,6 @@ class Signals
         $roc = array_pop($roc);
         return $roc;
     }
-
     /**
      *  Williams R%
      *  %R = (Highest High – Closing Price) / (Highest High – Lowest Low) x -100
@@ -808,7 +726,6 @@ class Signals
         $willr = array_pop($willr);
         return $willr;
     }
-
     /**
      * ULTIMATE OSCILLATOR
      *
@@ -844,7 +761,6 @@ class Signals
         $ultosc = array_pop($ultosc);
         return $ultosc;
     }
-
     /**
      * NO TALib function
      *
@@ -887,10 +803,8 @@ class Signals
         }
         $hli = trader_sma($rhp, 10);
         $hli = array_pop($hli);
-
         return $hli;
     }
-
     /**
      * NO TALib specific function
      *
@@ -911,26 +825,21 @@ class Signals
         $lows  = $data['low'];
         $highs_current = array_pop($highs);
         $lows_current  = array_pop($lows);
-
         $macd = trader_macd($data['close'], 12, 26, 9);
         $macd_raw = $macd[0];
         $signal   = $macd[1];
         #$hist     = $macd[2];
-
 		//Not enough Data
 		if(!$macd_raw || !$signal){
 			return 0;
 		}
-
         $macd_current  = (array_pop($macd_raw) - array_pop($signal));
-
         $ema  = trader_ema($data['close'], 13);
         $ema_current  = array_pop($ema);
         $bull_current = $ema_current - array_pop($data['high']);
         $bear_current = $ema_current - array_pop($data['low']);
-        return [$bull_current, $macd_current, $bear_current, $lows_current];
+        return ['$bull_current' => $bull_current, '$macd_current' => $macd_current, '$bear_current' => $bear_current, '$lows_current' => $lows_current];
     }
-
     /**
      *  NO TALib specific funciton
      *  Market Meanness Index - tendency to revert to the mean
@@ -963,8 +872,6 @@ class Signals
         $mmi = 100.*($nl+$nh)/($len-1);
         return $mmi;
     }
-
-
     /**
      *
      *      Hilbert Transform - Sinewave
@@ -994,7 +901,6 @@ class Signals
         // leadsine is the first one it looks like.
         $leadsine   = array_pop($hts[0]);
         $p_leadsine = array_pop($hts[0]);
-
         if ($trend) {
             /** if the last two sets of both are negative */
             if ($dcsine < 0 && $p_dcsine < 0 && $leadsine < 0 && $p_leadsine < 0) {
@@ -1006,11 +912,9 @@ class Signals
             }
             return 0;
         }
-
         /** WE ARE NOT ASKING FOR THE TREND, RETURN A SIGNAL */
-        return [$leadsine, $dcsine, $p_leadsine, $p_dcsine];
+        return ['$leadsine' => $leadsine, '$dcsine' => $dcsine, '$p_leadsine' => $p_leadsine, '$p_dcsine' => $p_dcsine];
     }
-
     /**
      *      Hilbert Transform - Instantaneous Trendline
      *      WMA(4)
@@ -1034,18 +938,15 @@ class Signals
         $a_htl = $a_wma4 = [];
         $htl  = trader_ht_trendline($data['close']);
         $wma4 = trader_wma($data['close'], 4);
-
         for($a=0;$a<5;$a++) {
             $a_htl[$a]  = array_pop($htl);
             $a_wma4[$a] = array_pop($wma4);
             $uptrend   += ($a_wma4[$a] > $a_htl[$a] ? 1 : 0);
             $downtrend += ($a_wma4[$a] < $a_htl[$a] ? 1 : 0);
-
             $declared = (($a_wma4[$a]-$a_htl[$a])/$a_htl[$a]);
         }
-        return [$uptrend, $declared, $downtrend];
+        return ['$uptrend' => $uptrend, '$declared' => $declared, '$downtrend' => $downtrend];
     }
-
     /**
      *
      *      Hilbert Transform - Trend vs Cycle Mode
@@ -1062,7 +963,6 @@ class Signals
         }
         $a_htm = trader_ht_trendmode($data['close']);
         $htm = array_pop($a_htm);
-
         /**
          *  We can return the number of periods we have been
          *  in either a trend or a cycle by calling this again with
@@ -1081,7 +981,6 @@ class Signals
             }
             return $nump;
         }
-
         /**
          *  Otherwise we just return if we are in a trend or not.
          */
@@ -1090,8 +989,6 @@ class Signals
         }
         return 0; // we are cycling.
     }
-
-
     # TODO
     # trader_wclprice
     #Weighted Close is determined by using High, Low and Closing Price of a Security during one day.
@@ -1112,7 +1009,6 @@ class Signals
     2. Money Flow Volume = Money Flow Multiplier x volume for the period
     3. Accumulation/Distribution= previous Accumulation/Distribution + current period's Money Flow Volume
      */
-
     /**
      * @param string $pair
      * @param null   $data
@@ -1141,8 +1037,9 @@ class Signals
         $flags['willr']           = @$this->willr($pair, $data);
         $flags['roc']             = @$this->roc($pair, $data);
         $flags['stochrsi']        = @$this->stochrsi($pair, $data);
-
-        $mas = ['sma','ema','wma','dema','trima','kama','mama']; // 't3','tema']' not working?
+        $mas = ['sma','ema',
+            //'wma','dema','trima','kama','mama'
+        ]; // 't3','tema']' not working?
         foreach ($mas as $ma) {
             foreach ($mas as $ma2){
                 foreach ($mas as $ma3){
@@ -1158,24 +1055,16 @@ class Signals
             }
         }
         $flattenedArray = [];
-        foreach ($flags as $element){
-            if(is_array($element)){
-                foreach ($element as $key => $value){
-                    if(!$value){
-                        $element[$key] = 0;
-                    }
-                }
-                $flattenedArray = array_merge($flattenedArray, $element);
+        foreach ($flags as $key => $value){
+            if(is_array($value)){
+                $flattenedArray = array_merge($flattenedArray, $value);
             } else {
-                $flattenedArray[] = $element;
+                $flattenedArray[$key] = $value;
             }
         }
+        //print_r($flattenedArray);
         return $flattenedArray;
     }
-
-
-
-
     /** *************************************************************************** */
     /**
      *   PYTHON PRICE PREDICTION HERE..  PROBABLY DON"T USE
@@ -1201,7 +1090,6 @@ class Signals
             ->orderby('buckettime', 'DESC')
             ->limit(24*7)
             ->get();
-
         $csv = "seq,id,curr,close,open,volume,zero\n";
         foreach($a as $stuff) {
             $_csv[] = "'".$stuff->buckettime ."',". $stuff->id .",'". $stuff->pair . "'," . (float)$stuff->close .','.(float)$stuff->open.','.(float)$stuff->volume.",0\n";
@@ -1210,7 +1098,6 @@ class Signals
         $ccsv = join ("", $__csv);
         $csv .= trim($ccsv);
         \Cache::put('tempbook',$csv,5); // we use redis to pass this to python
-
         echo array_pop($__csv) . "\n";
         $doing = base_path() . "/app/Scripts/$which"."_prediction.py";
         $process = new Process("python -W ignore $doing");
@@ -1222,7 +1109,6 @@ class Signals
         $out = explode(',', $process->getOutput());
         return round(array_pop($out),2);
     }
-
     // a function for comparing two float numbers
     // float 1 - The first number
     // float 2 - The number to compare against the first
@@ -1231,10 +1117,8 @@ class Signals
     {
         // Check numbers to 5 digits of precision
         $epsilon = 0.00001;
-
         $float1 = (float)$float1;
         $float2 = (float)$float2;
-
         switch ($operator)
         {
             // equal
@@ -1308,7 +1192,6 @@ class Signals
                 die("Unknown operator '".$operator."' in compareFloatNumbers()");
             }
         }
-
         return false;
     }
 }

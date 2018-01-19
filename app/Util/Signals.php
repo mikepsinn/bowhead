@@ -687,7 +687,7 @@ class Signals
             }
         }
         if(!isset($data[$key]['stochrsi'])){
-            QMLog::error("$key is not enough data to calculate stochrsi at period $period!");
+            QMLog::debug("$key is not enough data to calculate stochrsi at period $period!");
             return null;
         }
         return $data[$key]['stochrsi'];

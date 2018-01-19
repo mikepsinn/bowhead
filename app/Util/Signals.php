@@ -117,7 +117,7 @@ class Signals
         # A downside breakout occurs when the previous close is 1 ATR above the price
         $downside_signal = ($prev_close - ($current + $atr));
 
-        return [$upside_signal, $downside_signal];
+        return ['$upside_signal' => $upside_signal, '$downside_signal' => $downside_signal];
     }
 
 
@@ -167,7 +167,7 @@ class Signals
         $middle = $bbands[1]; // we'll find a use for you, one day
         $lower  = $bbands[2];
 
-        return [array_pop($lower), array_pop($upper), array_pop($middle)];
+        return ['bb_lower' => array_pop($lower), 'bb_upper' => array_pop($upper), 'bb_middle' => array_pop($middle)];
     }
 
 
@@ -329,7 +329,7 @@ class Signals
         $slowk = array_pop($slowk); #$slowk[count($slowk) - 1];
         $slowd = array_pop($slowd); #$slowd[count($slowd) - 1];
 
-        return [$slowd, $slowk];
+        return ['$slowd' => $slowd, '$slowk' => $slowk];
     }
 
     /**
@@ -361,7 +361,7 @@ class Signals
         $fastk = array_pop($fastk); #$slowk[count($slowk) - 1];
         $fastd = array_pop($fastd); #$slowd[count($slowd) - 1];
 
-        return [$fastd, $fastk];
+        return ['stoch_f_d' => $fastd, 'stoch_f_k' => $fastk];
     }
 
 
@@ -406,7 +406,7 @@ class Signals
             $ao_prior = (array_pop($ao_sma_3) - array_pop($ao_sma_4)); // last 'tick'
             $ao_now   = (array_pop($ao_sma_1) - array_pop($ao_sma_2)); // current 'tick'
 
-            return [$ao_prior, $ao_now];
+            return ['$ao_prior' => $ao_prior, '$ao_now' => $ao_now];
         }
     }
 
@@ -456,7 +456,7 @@ class Signals
         $prior_obv   = array_pop($_obv); #[count($_obv) - 2];
         $earlier_obv = array_pop($_obv); #[count($_obv) - 3];
 
-        return [$current_obv, $prior_obv, $earlier_obv];
+        return ['$current_obv' => $current_obv, '$prior_obv' => $prior_obv, '$earlier_obv' => $earlier_obv];
     }
 
 
@@ -495,7 +495,7 @@ class Signals
         $last_high = array_pop($data['high']); #[count($data['high'])-1];
         $last_low  = array_pop($data['low']); #[count($data['low'])-1];
 
-        return [$current_sar, $prior_sar, $earlier_sar, $last_high, $last_low];
+        return ['$current_sar' => $current_sar, '$prior_sar' => $prior_sar, '$earlier_sar' => $earlier_sar, '$last_high' => $last_high, '$last_low' => $last_low];
     }
 
     /**
@@ -573,7 +573,8 @@ class Signals
         //*/
 
 
-        return [$prior_above, $prev_red_candle, $below, $green_candle, $prior_below, $prior_green_candle, $above, $red_candle];
+        return ['$prior_above' => $prior_above, '$prev_red_candle' => $prev_red_candle, '$below' => $below, '$green_candle' => $green_candle,
+            '$prior_below' => $prior_below, '$prior_green_candle' => $prior_green_candle, '$above' => $above, '$red_candle' => $red_candle];
     }
 
 
@@ -928,7 +929,7 @@ class Signals
         $ema_current  = array_pop($ema);
         $bull_current = $ema_current - array_pop($data['high']);
         $bear_current = $ema_current - array_pop($data['low']);
-        return [$bull_current, $highs, $macd_current, $bear_current, $lows_current];
+        return ['$bull_current' => $bull_current, '$macd_current' => $macd_current, '$bear_current' => $bear_current, '$lows_current' => $lows_current];
     }
 
     /**
@@ -1008,7 +1009,7 @@ class Signals
         }
 
         /** WE ARE NOT ASKING FOR THE TREND, RETURN A SIGNAL */
-        return [$leadsine, $dcsine, $p_leadsine, $p_dcsine];
+        return ['$leadsine' => $leadsine, '$dcsine' => $dcsine, '$p_leadsine' => $p_leadsine, '$p_dcsine' => $p_dcsine];
     }
 
     /**
@@ -1043,7 +1044,7 @@ class Signals
 
             $declared = (($a_wma4[$a]-$a_htl[$a])/$a_htl[$a]);
         }
-        return [$uptrend, $declared, $downtrend];
+        return ['$uptrend' => $uptrend, '$declared' => $declared, '$downtrend' => $downtrend];
     }
 
     /**
@@ -1158,13 +1159,14 @@ class Signals
             }
         }
         $flattenedArray = [];
-        foreach ($flags as $element){
-            if(is_array($element)){
-                array_merge($flattenedArray, $element);
+        foreach ($flags as $key => $value){
+            if(is_array($value)){
+                $flattenedArray = array_merge($flattenedArray, $value);
             } else {
-                $flattenedArray[] = $element;
+                $flattenedArray[$key] = $value;
             }
         }
+        print_r($flattenedArray);
         return $flattenedArray;
     }
 
